@@ -4,7 +4,7 @@ application {
     packageName com.jhipster.demo.store
     authenticationType jwt
     prodDatabaseType mysql
-    buildTool gradle
+    buildTool maven
     clientFramework react
     enableTranslation true
     nativeLanguage en
