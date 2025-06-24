@@ -1,0 +1,23 @@
+application {
+  config {
+    baseName task
+    applicationType monolith
+    authenticationType jwt
+    packageName com.jhipster.demo.task
+    prodDatabaseType mysql
+    cacheProvider ehcache
+    buildTool maven
+    clientFramework angular
+    testFrameworks [cypress]
+  }
+  entities Task
+}
+
+entity Task {
+  description String required maxlength(200)
+  completed Boolean required
+  createdAt Instant required
+  targetDate Instant
+}
+
+dto Task with mapstruct
