@@ -21,3 +21,5 @@ entity Task {
 }
 
 dto Task with mapstruct
+service Task with serviceClass
+paginate Task with pagination
