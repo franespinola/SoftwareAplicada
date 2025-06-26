@@ -187,4 +187,133 @@ describe('Task e2e test', () => {
       cy.url().should('match', taskPageUrlPattern);
     });
   });
+
+  // =====================================================
+  // TESTS E2E ESPECÍFICOS PARA EL PROYECTO
+  // =====================================================
+
+  describe('E2E Tests - Project Requirements', () => {
+    // Test 1: Login usando API y crear nueva tarea
+    it('should login using API and create a new task successfully', () => {
+      // Usar autenticación directa por API (requisito del proyecto)
+      cy.authenticatedRequest({
+        method: 'GET',
+        url: '/api/account',
+      }).then(({ body }) => {
+        expect(body.login).to.exist;
+        cy.log(`Authenticated as: ${body.login}`);
+      });
+
+      // Navegar a la página de tareas
+      cy.visit(taskPageUrl);
+      cy.wait('@entitiesRequest');
+
+      // Crear nueva tarea
+      cy.get(entityCreateButtonSelector).click();
+      cy.getEntityCreateUpdateHeading('Task');
+
+      // Llenar formulario con datos específicos del proyecto
+      const taskDescription = 'E2E Test Task - Created via Cypress';
+      cy.get(`[data-cy="description"]`).clear().type(taskDescription);
+      cy.get(`[data-cy="description"]`).should('have.value', taskDescription);
+
+      // Dejar como no completada inicialmente
+      cy.get(`[data-cy="completed"]`).should('not.be.checked');
+
+      // Establecer fecha de creación
+      const currentDateTime = new Date().toISOString().slice(0, 16);
+      cy.get(`[data-cy="createdAt"]`).clear().type(currentDateTime);
+      cy.get(`[data-cy="createdAt"]`).should('have.value', currentDateTime);
+
+      // Establecer fecha objetivo (1 día después)
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+      cy.get(`[data-cy="targetDate"]`).clear().type(tomorrow);
+      cy.get(`[data-cy="targetDate"]`).should('have.value', tomorrow);
+
+      // Guardar la tarea
+      cy.get(entityCreateSaveButtonSelector).click();
+
+      // Verificar que se creó correctamente
+      cy.wait('@postEntityRequest').then(({ response }) => {
+        expect(response?.statusCode).to.equal(201);
+        expect(response?.body.description).to.equal(taskDescription);
+        expect(response?.body.completed).to.be.false;
+        task = response.body;
+        cy.log(`Task created with ID: ${task.id}`);
+      });
+
+      // Verificar que regresamos a la lista y aparece la tarea
+      cy.wait('@entitiesRequest');
+      cy.url().should('match', taskPageUrlPattern);
+      cy.get(entityTableSelector).should('contain', taskDescription);
+    });
+
+    // Test 2: Marcar tarea como completada
+    it('should mark an existing task as completed', () => {
+      // Primero crear una tarea para el test
+      const testTaskDescription = 'Task to be completed - E2E Test';
+      cy.authenticatedRequest({
+        method: 'POST',
+        url: '/api/tasks',
+        body: {
+          description: testTaskDescription,
+          completed: false,
+          createdAt: new Date().toISOString(),
+          targetDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        },
+      }).then(({ body }) => {
+        task = body;
+        cy.log(`Test task created with ID: ${task.id}`);
+
+        // Visitar la página de tareas
+        cy.visit(taskPageUrl);
+        cy.wait('@entitiesRequest');
+
+        // Buscar la tarea específica y hacer clic en editar
+        cy.get(entityTableSelector)
+          .contains(testTaskDescription)
+          .parents('tr')
+          .within(() => {
+            cy.get(entityEditButtonSelector).click();
+          });
+
+        // Verificar que estamos en la página de edición
+        cy.getEntityCreateUpdateHeading('Task');
+
+        // Verificar que inicialmente no está completada
+        cy.get(`[data-cy="completed"]`).should('not.be.checked');
+
+        // Marcar como completada
+        cy.get(`[data-cy="completed"]`).click();
+        cy.get(`[data-cy="completed"]`).should('be.checked');
+
+        // Verificar que otros campos mantienen sus valores
+        cy.get(`[data-cy="description"]`).should('have.value', testTaskDescription);
+
+        // Guardar los cambios
+        cy.get(entityCreateSaveButtonSelector).click();
+
+        // Verificar que la actualización fue exitosa
+        cy.wait('@entitiesRequest').then(({ response }) => {
+          expect(response?.statusCode).to.equal(200);
+        });
+
+        // Verificar que regresamos a la lista
+        cy.url().should('match', taskPageUrlPattern);
+
+        // Verificar que la tarea aparece en la lista
+        cy.get(entityTableSelector).should('contain', testTaskDescription);
+
+        // Verificar usando API que efectivamente se marcó como completada
+        cy.authenticatedRequest({
+          method: 'GET',
+          url: `/api/tasks/${task.id}`,
+        }).then(({ body }) => {
+          expect(body.completed).to.be.true;
+          expect(body.description).to.equal(testTaskDescription);
+          cy.log('Task successfully marked as completed!');
+        });
+      });
+    });
+  });
 });
