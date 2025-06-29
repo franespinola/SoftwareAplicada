@@ -16,7 +16,7 @@ services:
       - MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED=true
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/task?useUnicode=true&characterEncoding=utf8&useSSL=false&useLegacyDatetimeCode=false&createDatabaseIfNotExist=true
       - SPRING_LIQUIBASE_URL=jdbc:mysql://mysql:3306/task?useUnicode=true&characterEncoding=utf8&useSSL=false&useLegacyDatetimeCode=false&createDatabaseIfNotExist=true
-      # Configuración para logstash
+      # Configuración para logstash (ELK stack activado)
       - LOGGING_CONFIG=classpath:logback-spring-elk.xml
       - LOGSTASH_HOST=logstash
       - LOGSTASH_PORT=5000

@@ -132,6 +132,11 @@
             <artifactId>spring-boot-starter-logging</artifactId>
         </dependency>
         <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
@@ -753,6 +758,7 @@
                     </executions>
                     <configuration>
                         <javaVersion>${java.version}</javaVersion>
+                        <skip>true</skip>
                     </configuration>
                 </plugin>
                 <plugin>

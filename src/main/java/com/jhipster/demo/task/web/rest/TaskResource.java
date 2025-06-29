@@ -60,7 +60,11 @@ public class TaskResource {
         if (taskDTO.getId() != null) {
             throw new BadRequestAlertException("A new task cannot already have an ID", ENTITY_NAME, "idexists");
         }
+
+        LOG.info("Creating new task: {}", taskDTO.getDescription());
         taskDTO = taskService.save(taskDTO);
+        LOG.info("Task created successfully - ID: {}, Description: '{}'", taskDTO.getId(), taskDTO.getDescription());
+
         return ResponseEntity.created(new URI("/api/tasks/" + taskDTO.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(applicationName, true, ENTITY_NAME, taskDTO.getId().toString()))
             .body(taskDTO);
@@ -93,7 +97,10 @@ public class TaskResource {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
+        LOG.info("Updating task - ID: {}, Description: '{}'", id, taskDTO.getDescription());
         taskDTO = taskService.update(taskDTO);
+        LOG.info("Task updated successfully - ID: {}, Description: '{}'", taskDTO.getId(), taskDTO.getDescription());
+
         return ResponseEntity.ok()
             .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, taskDTO.getId().toString()))
             .body(taskDTO);
@@ -171,7 +178,9 @@ public class TaskResource {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable("id") Long id) {
         LOG.debug("REST request to delete Task : {}", id);
+        LOG.info("Deleting task with ID: {}", id);
         taskService.delete(id);
+        LOG.info("Task deleted successfully - ID: {}", id);
         return ResponseEntity.noContent()
             .headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString()))
             .build();
