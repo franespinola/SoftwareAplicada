@@ -1,101 +1,61 @@
 #!/usr/bin/env groovy
 
-def dockerImage
+node {
+    stage('checkout') {
+        checkout scm
+    }
 
-pipeline {
-    agent any
-    
-    stages {
-        stage('checkout') {
-            steps {
-                checkout scm
-            }
-        }
-        
-        stage('check java') {
-            steps {
-                sh 'java -version'
-            }
-        }
-        
-        stage('clean') {
-            steps {
-                sh 'chmod +x mvnw'
-                sh './mvnw -ntp clean -P-webapp'
-            }
-        }
-        
-        stage('nohttp') {
-            steps {
-                sh './mvnw -ntp checkstyle:check'
-            }
-        }
-        
-        stage('install tools') {
-            steps {
-                sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:install-node-and-npm -DnodeVersion=v22.15.0 -DnpmVersion=10.9.2'
-            }
-        }
-        
-        stage('npm install') {
-            steps {
-                sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm'
-            }
-        }
-        
-        stage('backend tests') {
-            steps {
-                sh './mvnw -ntp verify -P-webapp'
-            }
-            post {
-                always {
-                    publishTestResults testResultsPattern: 'target/surefire-reports/TEST-*.xml, target/failsafe-reports/TEST-*.xml'
-                }
-            }
-        }
-        
-        stage('frontend tests') {
-            steps {
-                sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm -Dfrontend.npm.arguments="run test:ci"'
-            }
-            post {
-                always {
-                    publishTestResults testResultsPattern: 'target/test-results/TESTS-results-jest.xml'
-                }
-            }
-        }
-        
-        stage('packaging') {
-            steps {
-                sh './mvnw -ntp verify -P-webapp -Pprod -DskipTests'
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
-        }
-        
-        stage('build docker image') {
-            steps {
-                sh './mvnw -ntp jib:dockerBuild'
-            }
-        }
-        
-        stage('publish docker') {
-            steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-login', 
-                    passwordVariable: 'DOCKER_REGISTRY_PWD', 
-                    usernameVariable: 'DOCKER_REGISTRY_USER')]) {
-                    sh '''
-                        echo $DOCKER_REGISTRY_PWD | docker login -u $DOCKER_REGISTRY_USER --password-stdin
-                        docker push franespi92/task-app:latest
-                        docker logout
-                    '''
-                }
-            }
-        }
+    stage('check java') {
+        sh "java -version"
+    }
+
+    stage('clean') {
+        sh "chmod +x mvnw"
+        sh "./mvnw -ntp clean -P-webapp"
     }
     
-    post {
-        always {
-            cleanWs()
+    stage('nohttp') {
+        sh "./mvnw -ntp checkstyle:check"
+    }
+
+    stage('install tools') {
+        sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:install-node-and-npm -DnodeVersion=v22.15.0 -DnpmVersion=10.9.2"
+    }
+
+    stage('npm install') {
+        sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm"
+    }
+    
+    stage('backend tests') {
+        try {
+            sh "./mvnw -ntp verify -P-webapp"
+        } catch(err) {
+            throw err
+        } finally {
+            publishTestResults testResultsPattern: 'target/surefire-reports/TEST-*.xml, target/failsafe-reports/TEST-*.xml'
         }
+    }
+
+    stage('frontend tests') {
+        try {
+            sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm -Dfrontend.npm.arguments="run test:ci"'
+        } catch(err) {
+            throw err
+        } finally {
+            publishTestResults testResultsPattern: 'target/test-results/TESTS-results-jest.xml'
+        }
+    }
+
+    stage('packaging') {
+        sh "./mvnw -ntp verify -P-webapp -Pprod -DskipTests"
+        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+    }
+
+    stage('publish docker') {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-login', 
+            passwordVariable: 'DOCKER_REGISTRY_PWD', 
+            usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+            sh "./mvnw -ntp jib:build"
+        }  
     }
 }
