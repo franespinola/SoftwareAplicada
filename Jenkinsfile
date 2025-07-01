@@ -27,23 +27,25 @@ node {
     }
     
     stage('backend tests') {
-        //try {
-        //    sh "./mvnw -ntp verify -P-webapp"
-        //} catch(err) {
-        //    throw err
-        //} finally {
-        //    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml'
-        //}
+        try {
+            sh "./mvnw -ntp verify -P-webapp"
+        } catch(err) {
+            currentBuild.result = 'UNSTABLE'
+            echo "Backend tests failed but continuing pipeline"
+        } finally {
+            junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml'
+        }
     }
 
     stage('frontend tests') {
-        //try {
-        //    sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm -Dfrontend.npm.arguments="run test:ci"'
-        //} catch(err) {
-        //    throw err
-        //} finally {
-        //    junit allowEmptyResults: true, testResults: '**/target/test-results/TESTS-results-jest.xml'
-        //}
+        try {
+            sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm -Dfrontend.npm.arguments="run test:ci"'
+        } catch(err) {
+            currentBuild.result = 'UNSTABLE'
+            echo "Frontend tests failed but continuing pipeline"
+        } finally {
+            junit allowEmptyResults: true, testResults: '**/target/test-results/TESTS-results-jest.xml'
+        }
     }
 
     stage('packaging') {
