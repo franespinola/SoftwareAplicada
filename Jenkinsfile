@@ -32,7 +32,7 @@ node {
         } catch(err) {
             throw err
         } finally {
-            publishTestResults testResultsPattern: 'target/surefire-reports/TEST-*.xml, target/failsafe-reports/TEST-*.xml'
+            junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml,**/target/failsafe-reports/TEST-*.xml'
         }
     }
 
@@ -42,7 +42,7 @@ node {
         } catch(err) {
             throw err
         } finally {
-            publishTestResults testResultsPattern: 'target/test-results/TESTS-results-jest.xml'
+            junit allowEmptyResults: true, testResults: '**/target/test-results/TESTS-results-jest.xml'
         }
     }
 
