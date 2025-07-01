@@ -1,76 +1,89 @@
 #!/usr/bin/env groovy
 
-def dockerImage
-
-node {
-    stage('checkout') {
-        checkout scm
-    }
-
-    // Removido gitlabCommitStatus - funciona ahora con GitHub
-    docker.image('jhipster/jhipster:v8.1.0').inside('-u jhipster --tmpfs /.cache --tmpfs /.npm') {
-        stage('check java') {
-            sh "java -version"
-        }
-
-        stage('clean') {
-            sh "chmod +x mvnw"
-            sh "./mvnw -ntp clean -P-webapp"
-        }
-
-        stage('nohttp') {
-            sh "./mvnw -ntp checkstyle:check"
-        }
-
-        stage('install tools') {
-            sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:install-node-and-npm -DnodeVersion=v22.15.0 -DnpmVersion=10.9.2"
-        }
-
-            stage('npm install') {
-                sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm"
+pipeline {
+    agent any
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
             }
-
-            stage('backend tests') {
-                try {
-                    sh "./mvnw -ntp verify -P-webapp"
-                } catch(err) {
-                    throw err
-                } finally {
+        }
+        
+        stage('Check Java') {
+            steps {
+                sh 'java -version'
+            }
+        }
+        
+        stage('Clean') {
+            steps {
+                sh 'chmod +x mvnw'
+                sh './mvnw -ntp clean -P-webapp'
+            }
+        }
+        
+        stage('NoHTTP Check') {
+            steps {
+                sh './mvnw -ntp checkstyle:check'
+            }
+        }
+        
+        stage('Install Tools') {
+            steps {
+                sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:install-node-and-npm -DnodeVersion=v22.15.0 -DnpmVersion=10.9.2'
+            }
+        }
+        
+        stage('NPM Install') {
+            steps {
+                sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm'
+            }
+        }
+        
+        stage('Backend Tests') {
+            steps {
+                sh './mvnw -ntp verify -P-webapp'
+            }
+            post {
+                always {
                     publishTestResults testResultsPattern: 'target/surefire-reports/TEST-*.xml, target/failsafe-reports/TEST-*.xml'
                 }
             }
-
-            stage('frontend tests') {
-                try {
-                    sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm -Dfrontend.npm.arguments='run test:ci'"
-                } catch(err) {
-                    throw err
-                } finally {
+        }
+        
+        stage('Frontend Tests') {
+            steps {
+                sh './mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm -Dfrontend.npm.arguments="run test:ci"'
+            }
+            post {
+                always {
                     publishTestResults testResultsPattern: 'target/test-results/TESTS-results-jest.xml'
                 }
             }
-
-        stage('packaging') {
-            sh "./mvnw -ntp verify -P-webapp -Pprod -DskipTests"
-            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
-
-        // Comentado temporalmente - descomenta si tienes SonarQube configurado
-        /*
-        stage('quality analysis') {
-            withSonarQubeEnv('Sonar') {
-                sh "./mvnw -ntp initialize sonar:sonar"
+        
+        stage('Package') {
+            steps {
+                sh './mvnw -ntp verify -P-webapp -Pprod -DskipTests'
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
-        */
-
-        // STAGE ADICIONAL PARA DOCKERHUB
-        stage('publish docker') {
-            withCredentials([usernamePassword(credentialsId: 'dockerhub-login', 
-                passwordVariable: 'DOCKER_REGISTRY_PWD', 
-                usernameVariable: 'DOCKER_REGISTRY_USER')]) {
-                sh "./mvnw -ntp jib:build"
+        
+        stage('Publish to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-login', 
+                    passwordVariable: 'DOCKER_REGISTRY_PWD', 
+                    usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+                    sh './mvnw -ntp jib:build'
+                }
             }
+        }
+    }
+    
+    post {
+        always {
+            cleanWs()
         }
     }
 }
