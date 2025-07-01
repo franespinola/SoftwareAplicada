@@ -7,24 +7,24 @@ node {
         checkout scm
     }
 
-    gitlabCommitStatus(name: 'build') {
-        docker.image('jhipster/jhipster:v8.1.0').inside('-u jhipster --tmpfs /.cache --tmpfs /.npm') {
-            stage('check java') {
-                sh "java -version"
-            }
+    // Removido gitlabCommitStatus - funciona ahora con GitHub
+    docker.image('jhipster/jhipster:v8.1.0').inside('-u jhipster --tmpfs /.cache --tmpfs /.npm') {
+        stage('check java') {
+            sh "java -version"
+        }
 
-            stage('clean') {
-                sh "chmod +x mvnw"
-                sh "./mvnw -ntp clean -P-webapp"
-            }
+        stage('clean') {
+            sh "chmod +x mvnw"
+            sh "./mvnw -ntp clean -P-webapp"
+        }
 
-            stage('nohttp') {
-                sh "./mvnw -ntp checkstyle:check"
-            }
+        stage('nohttp') {
+            sh "./mvnw -ntp checkstyle:check"
+        }
 
-            stage('install tools') {
-                sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:install-node-and-npm -DnodeVersion=v18.17.1 -DnpmVersion=9.6.7"
-            }
+        stage('install tools') {
+            sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:install-node-and-npm -DnodeVersion=v22.15.0 -DnpmVersion=10.9.2"
+        }
 
             stage('npm install') {
                 sh "./mvnw -ntp com.github.eirslett:frontend-maven-plugin:npm"
@@ -50,24 +50,26 @@ node {
                 }
             }
 
-            stage('packaging') {
-                sh "./mvnw -ntp verify -P-webapp -Pprod -DskipTests"
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
+        stage('packaging') {
+            sh "./mvnw -ntp verify -P-webapp -Pprod -DskipTests"
+            archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        }
 
-            stage('quality analysis') {
-                withSonarQubeEnv('Sonar') {
-                    sh "./mvnw -ntp initialize sonar:sonar"
-                }
+        // Comentado temporalmente - descomenta si tienes SonarQube configurado
+        /*
+        stage('quality analysis') {
+            withSonarQubeEnv('Sonar') {
+                sh "./mvnw -ntp initialize sonar:sonar"
             }
+        }
+        */
 
-            // STAGE ADICIONAL PARA DOCKERHUB
-            stage('publish docker') {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-login', 
-                    passwordVariable: 'DOCKER_REGISTRY_PWD', 
-                    usernameVariable: 'DOCKER_REGISTRY_USER')]) {
-                    sh "./mvnw -ntp jib:build"
-                }
+        // STAGE ADICIONAL PARA DOCKERHUB
+        stage('publish docker') {
+            withCredentials([usernamePassword(credentialsId: 'dockerhub-login', 
+                passwordVariable: 'DOCKER_REGISTRY_PWD', 
+                usernameVariable: 'DOCKER_REGISTRY_USER')]) {
+                sh "./mvnw -ntp jib:build"
             }
         }
     }
